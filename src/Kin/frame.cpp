@@ -762,6 +762,11 @@ rai::Frame& rai::Frame::setContact(int cont) {
   return *this;
 }
 
+int rai::Frame::getContact() const {
+  if(!shape) return 0;
+  return shape->cont;
+}
+
 rai::Frame& rai::Frame::setMass(double mass) {
   if(mass==0.) {
     if(inertia) delete inertia;

@@ -177,6 +177,7 @@ struct Frame : NonCopyable {
   Frame& setColor(const arr& color);
   Frame& setJoint(rai::JointType jointType, const arr& limits= {});
   Frame& setContact(int cont);
+  int getContact() const;
   Frame& setMass(double mass);
   Frame& setAttribute(const char* key, double value);
   Frame& setJointState(const arr& q); ///< throws error if this frame is not also a joint, and if q.size() != joint->dim
