@@ -42,7 +42,8 @@ void init_Frame(pybind11::module& m) {
   .def("setJoint", &rai::Frame::setJoint, "", pybind11::arg("jointType"), pybind11::arg("limits")=arr{}, pybind11::arg("scale")=1., pybind11::arg("mimic")=(rai::Frame*)0)
   .def("setJointState", &rai::Frame::setJointState, "")
   .def("setContact", &rai::Frame::setContact, "")
-  .def("setMass", &rai::Frame::setMass, "", pybind11::arg("mass"), pybind11::arg("inertiaMatrix")=arr{})
+  .def("getContact", &rai::Frame::getContact, "")
+  .def("setMass", &rai::Frame::setMass, "")
   .def("setColor", &rai::Frame::setColor, "")
   .def("setShape", &rai::Frame::setShape, "", pybind11::arg("type"), pybind11::arg("size"))
   .def("setMesh", &rai::Frame::setMesh,
