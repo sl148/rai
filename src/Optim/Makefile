@@ -6,9 +6,9 @@ OUTPUT = lib$(NAME).so
 
 DEPEND = Core Algo
 
-CERES = 0
-NLOPT = 0
-IPOPT = 0
+CERES = 1
+NLOPT = 1
+IPOPT = 1
 
 SRCS = $(shell find . -maxdepth 1 -name '*.cpp' )
 OBJS = $(SRCS:%.cpp=%.o)
