@@ -47,6 +47,7 @@ struct PRM_PathFinder : NonCopyable {
 
   //helpers
   void buildRoadmap();
+  uint addNode(const arr& q, bool connect=true);
   bool checkEdge(const arr& q1, const arr& q2);
   void view(bool pause, const char* txt=0, bool play=false);
 

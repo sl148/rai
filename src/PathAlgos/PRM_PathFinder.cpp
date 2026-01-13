@@ -98,37 +98,75 @@ void PRM_PathFinder::setExplicitCollisionPairs(const StringA& collisionPairs) {
   P->setExplicitCollisionPairs(collisionPairs);
 }
 
+uint PRM_PathFinder::addNode(const arr& q, bool connect){
+  auto ret = P->query(q);
+  if(!ret->isFeasible){
+      LOG(0) << "Failed to add node. Collision: " << ret->totalCollision << " Tolerance: " << P->collisionTolerance;
+      return -1;
+  }
+
+  uint idx = ann.X.d0;
+  ann.append(q);
+  LOG(0) << "Added node " << idx << ". Total nodes: " << ann.X.d0;
+
+  // If spherical, add flipped versions
+  if(P->sphericalCoordinates.N){
+      arr q_flipped = q;
+      for(uint i=0; i<P->sphericalCoordinates.d0; i++) {
+          prm_flipSphericalCoordinates(q_flipped, P->sphericalCoordinates[i]);
+          ann.append(q_flipped);
+      }
+  }
+
+  if(connect){
+      adjacency.resize(ann.X.d0);
+      uint k = opt.kNeighbors;
+      if(k >= ann.X.d0) k = ann.X.d0 - 1;
+      
+      LOG(0) << "Connecting node " << idx << " to " << k << " neighbors.";
+
+      // Connect newly added nodes (idx to ann.X.d0-1)
+      for(uint i=idx; i<ann.X.d0; i++){
+          uintA idxs;
+          arr dists;
+          ann.getkNN(dists, idxs, ann.X[i], k); // Finds kNN in the WHOLE tree
+          
+          LOG(0) << "Node " << i << " found " << idxs.N << " neighbors.";
+          
+          uint connectedCount = 0;
+          for(uint j : idxs){
+              if(i == j) continue;
+              
+              // Check existing?
+              bool exists = false;
+              for(uint neighbor : adjacency(i)){ if(neighbor == j) { exists=true; break; } }
+              if(exists) continue;
+              
+              if(checkEdge(ann.X[i], ann.X[j])){
+                  adjacency(i).append(j);
+                  adjacency(j).append(i);
+                  connectedCount++;
+              }
+          }
+          LOG(0) << "Node " << i << " connected to " << connectedCount << " new neighbors.";
+      }
+  }
+  
+  return idx;
+}
+
 void PRM_PathFinder::buildRoadmap(){
   ann.clear();
   adjacency.clear();
 
-  // Helper to add node and handle spherical flips
-  auto addNode = [&](const arr& q, const char* name) {
-      auto ret = P->query(q);
-      if(ret->isFeasible){
-          ann.append(q);
-          
-          // If spherical, add flipped versions
-          if(P->sphericalCoordinates.N){
-              arr q_flipped = q;
-              for(uint i=0; i<P->sphericalCoordinates.d0; i++) {
-                  prm_flipSphericalCoordinates(q_flipped, P->sphericalCoordinates[i]);
-                  ann.append(q_flipped);
-              }
-          }
-      } else {
-          if(name) LOG(0) << "Failed to add node " << name << ". Collision: " << ret->totalCollision << " Tolerance: " << P->collisionTolerance;
-      }
-  };
+  // 1. (Formerly) Add Start and Goal first -- NOW SKIPPED in buildRoadmap
 
-  // 1. Add Start and Goal first
-  addNode(start, "start");
-  addNode(goal, "goal");
+  uint dim = P->C.getJointStateDimension();
 
   // 2. Sample random nodes
   uint n = opt.nSamples;
   for(uint i=0; i<n; ++i){
-    arr q(start.N);
+    arr q(dim);
     // Random sampling based on limits
     for(uint j=0; j<q.N; j++) {
       double lo=P->limits(0, j), up=P->limits(1, j);
@@ -144,7 +182,7 @@ void PRM_PathFinder::buildRoadmap(){
         prm_randomSphericalCoordinates(q, P->sphericalCoordinates[j]);
     }
     
-    addNode(q, nullptr);
+    addNode(q, false);
   }
   
   // Resize adjacency
@@ -158,10 +196,13 @@ void PRM_PathFinder::buildRoadmap(){
       }
   }
 
-  // 3. Connect nodes
+  // 3. Connect nodes (Batch)
   uint k = opt.kNeighbors;
-  if(k >= ann.X.d0) k = ann.X.d0 - 1;
+  if(ann.X.d0 > 0 && k >= ann.X.d0) k = ann.X.d0 - 1;
+  
+  std::cout << "DEBUG: Connecting roadmap nodes (k=" << k << ")..." << std::endl;
 
+  uint totalEdges = 0;
   for(uint i=0; i<ann.X.d0; ++i){
     uintA idxs;
     arr dists;
@@ -180,9 +221,11 @@ void PRM_PathFinder::buildRoadmap(){
       if(checkEdge(ann.X[i], ann.X[j])){
         adjacency(i).append(j);
         adjacency(j).append(i);
+        totalEdges++;
       }
     }
   }
+  LOG(0) << "Roadmap construction complete. Total edges: " << totalEdges;
 }
 
 bool PRM_PathFinder::checkEdge(const arr& q1, const arr& q2){
@@ -195,13 +238,57 @@ shared_ptr<SolverReturn> PRM_PathFinder::solve(){
 
   ret->time -= rai::cpuTime();
 
-  // Build roadmap
-  buildRoadmap();
+  // Build roadmap if not already built
+  if(ann.X.d0 == 0) buildRoadmap();
+
+  // Ensure start and goal are in the map
+  uint startNode = (uint)-1;
+  uint goalNode = (uint)-1;
+
+  // Try to find existing start
+  if(ann.X.d0 > 0) {
+      uint nn = ann.getNN(start);
+      if(length(ann.X[nn] - start) < 1e-6) startNode = nn;
+  }
+  if(startNode == (uint)-1) {
+      LOG(0) << "Adding Start Node...";
+      startNode = addNode(start, true);
+  } else {
+      LOG(0) << "Start Node found at " << startNode;
+  }
+
+  // Try to find existing goal
+  if(ann.X.d0 > 0) {
+      uint nn = ann.getNN(goal);
+      if(length(ann.X[nn] - goal) < 1e-6) goalNode = nn;
+  }
+  if(goalNode == (uint)-1) {
+       LOG(0) << "Adding Goal Node...";
+       goalNode = addNode(goal, true);
+  } else {
+      LOG(0) << "Goal Node found at " << goalNode;
+  }
+
+  // Check feasibility of start/goal
+  if(startNode == (uint)-1){
+       LOG(0) << "Start configuration is infeasible!";
+       ret->feasible = false;
+       ret->time += rai::cpuTime();
+       return ret;
+  }
+  if(goalNode == (uint)-1){
+       LOG(0) << "Goal configuration is infeasible!";
+       ret->feasible = false;
+       ret->time += rai::cpuTime();
+       return ret;
+  }
+  
+  // Debug Adjacency
+  LOG(0) << "Start Node " << startNode << " degree: " << adjacency(startNode).N;
+  LOG(0) << "Goal Node " << goalNode << " degree: " << adjacency(goalNode).N;
+
 
   // Dijkstra
-  uint startNode = ann.getNN(start);
-  uint goalNode = ann.getNN(goal);
-  
   // Verify distances are zero (or close)
   if(length(ann.X[startNode] - start) > 1e-6) {
       LOG(-1) << "PRM: Start node not found in roadmap?";

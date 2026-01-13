@@ -32,6 +32,7 @@ void init_PathAlgos(pybind11::module& m) {
       .def("setProblem", &rai::PRM_PathFinder::setProblem, "", pybind11::arg("Configuration"))
       .def("setStartGoal", &rai::PRM_PathFinder::setStartGoal, "", pybind11::arg("starts"), pybind11::arg("goals"))
       .def("setExplicitCollisionPairs", &rai::PRM_PathFinder::setExplicitCollisionPairs, "only after setProblem", pybind11::arg("collisionPairs"))
+      .def("generateRoadmap", &rai::PRM_PathFinder::buildRoadmap, "")
       .def("solve", &rai::PRM_PathFinder::solve, "")
 
       ;
