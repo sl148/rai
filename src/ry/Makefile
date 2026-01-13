@@ -3,7 +3,7 @@ NAME   = $(shell basename `pwd`)
 EXT    = $(shell python3-config --extension-suffix)
 OUTPUT = _robotic.so #$(EXT)
 
-DEPEND = Core Algo Optim Gui Geo Kin KOMO PathAlgos
+DEPEND = Core Algo Optim Gui Geo Kin KOMO PathAlgos LGP DataGen Logic
 
 PYBIND = 1
 PHYSX = 1
