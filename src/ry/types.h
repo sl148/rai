@@ -13,6 +13,8 @@
 #include "../Core/array.h"
 #include "../Core/graph.h"
 #include "../Geo/geo.h"
+#include "../Geo/mesh.h"
+#include "../Kin/frame.h"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
