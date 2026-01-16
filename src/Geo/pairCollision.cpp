@@ -362,12 +362,12 @@ void PairCollision::libccd(rai::Mesh& m1, rai::Mesh& m2, CCDmethod method) {
   if(method==_ccdMPRPenetration) {
     int ret = ccdMPRPenetrationRai(&m1, &m2, &ccd, &_depth, &_dir, &_pos, simplex);
     if(ret<0) {
-      LOG(0) <<"WARNING: called MPR penetration for non intersecting meshes...";
+      // LOG(0) <<"WARNING: called MPR penetration for non intersecting meshes...";
       m1._support_vertex = rnd(m1.V.d0);
       m2._support_vertex = rnd(m2.V.d0);
       libccd(m1, m2, _ccdGJKIntersect);
       if(distance<0.) {
-        LOG(0) <<"WARNING: but GJK says intersection";
+        // LOG(0) <<"WARNING: but GJK says intersection";
         distance=0;
       }
       return;
@@ -395,12 +395,12 @@ void PairCollision::libccd(rai::Mesh& m1, rai::Mesh& m2, CCDmethod method) {
   } else if(method==_ccdGJKPenetration) {
     int ret = ccdGJKPenetration(&m1, &m2, &ccd, &_depth, &_dir, &_pos);
     if(ret<0) {
-      LOG(0) <<"WARNING: called MPR penetration for non intersecting meshes...";
+      // LOG(0) <<"WARNING: called MPR penetration for non intersecting meshes...";
       m1._support_vertex = rnd(m1.V.d0);
       m2._support_vertex = rnd(m2.V.d0);
       libccd(m1, m2, _ccdGJKIntersect);
       if(distance<0.) {
-        LOG(0) <<"WARNING: but GJK says intersection";
+        // LOG(0) <<"WARNING: but GJK says intersection";
         distance=0;
       }
       return;
